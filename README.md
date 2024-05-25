@@ -19,4 +19,5 @@ Sonuçta, DDoS saldırılarını tespit etme ve normal trafiğinden ayırma konu
 
 
 ÖNEMLİ
+
 Bu projede kullanılan veri seti, Kali Linux sanal makinesi üzerinde gerçekleştirilen DDoS saldırılarının simülasyonu ile elde edilmiştir. Ancak veri setinde bilgisayarın IP adresleri gibi hassas bilgiler bulunduğundan dolayı doğrudan paylaşılmamaktadır. Bunun yerine, veri setinin nasıl oluşturulacağını anlatan bir metin belgesi eklenmiştir.
