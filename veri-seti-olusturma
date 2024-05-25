@@ -1,0 +1,55 @@
+KALİ LİNUX SANAL MAKİNESİ KURULUMU VE VERİ TOPLAMA: 
+
+İlk adımda, DDoS saldırılarını simüle etmek ve veri toplamak için Kali Linux sanal makinesi indirilir ve kurulur.
+Ardından, sanal makinede belirli bir komut istemcisi açılarak, ağ trafiği kaydedilmek üzere belirli bir komut çalıştırılır. Bu komut, belirtilen ağ arayüzünden gelen tüm trafiği yakalar ve bir dosyaya kaydeder. Bu adım, analiz edilecek ham veriyi toplamak için gereklidir.
+
+# Komut satırı 1: Ağ trafiğini kaydetme komutu
+sudo tcpdump -i eth0 -w /home/kali/Desktop/kaydedilecek_trafik_deneme.pcap 
+
+
+DDOS SALDIRISI SİMÜLASYON VE TRAFİK KAYDI:
+
+Daha sonra, DDoS saldırılarını simüle etmek amacıyla yeni bir komut istemcisi açılarak başka bir komut çalıştırılır. Bu komut, belirli bir hedef IP adresine sürekli olarak SYN paketleri göndererek DDoS saldırısını başlatır. Saldırı tamamlandığında, ağ trafiği kaydedilir.
+  
+# Komut satırı 2: DDoS saldırısı simülasyonu komutu
+sudo hping3 -S -p 445 192.168.1.102 -i u10000 -c 30000 -d 120 -w 64
+
+
+VERİ İŞLEME VE ANALİZ:
+
+Kaydedilen ağ trafiği dosyasındaki verileri işlemek ve analiz etmek için Python programlama dili kullanılır.
+Hazırlanan bir Python betiği, kaydedilen pcap dosyasını okuyarak paketleri analiz eder ve belirli özelliklerini çıkarır.
+Bu betik, her bir paket için IP kaynak ve hedef adresleri, TCP kaynak ve hedef portları, IP protokolü, çerçeve uzunluğu, TCP bayrakları (SYN, RST, PUSH, ACK), TCP sıralama ve onay numaraları gibi bilgileri çıkarır.
+Ayrıca, belirli koşullara dayalı olarak paketlere etiketler atanır. Örneğin, belirli bayrak kombinasyonlarına sahip paketler DDoS saldırısı olarak etiketlenirken, diğerleri normal trafik olarak işaretlenir.
+
+ 
+# trafik_bilgileri.py DOSYASI İÇİNDEKİ KODLAR
+from scapy.all import *
+
+pkts = rdpcap("/home/kali/Desktop/kaydedilecek_trafik_deneme.pcap")
+
+with open("/home/kali/Desktop/trafik_bilgileri_deneme.txt", "w") as f:
+    for pkt in pkts:
+        if IP in pkt and TCP in pkt:
+            ip_src = pkt[IP].src
+            ip_dst = pkt[IP].dst
+            tcp_srcport = pkt[TCP].sport
+            tcp_dstport = pkt[TCP].dport
+            ip_proto = pkt[IP].proto
+            frame_len = len(pkt)
+            tcp_syn = "S" in pkt[TCP].flags
+            tcp_reset = "R" in pkt[TCP].flags
+            tcp_push = "P" in pkt[TCP].flags
+            tcp_ack = "A" in pkt[TCP].flags
+            tcp_seq = pkt[TCP].seq
+            tcp_ack_seq = pkt[TCP].ack
+            frame_time = pkt.time
+
+            if tcp_syn and tcp_ack and not tcp_reset:
+                label = "DDOS-ACK"
+            elif tcp_syn and tcp_ack and tcp_reset:
+                label = "DDOS-PSH-ACK"
+            else:
+                label = "Benign"
+
+            f.write(f"IP Source: {ip_src}, IP Destination: {ip_dst}, TCP Source Port: {tcp_srcport}, TCP Destination Port: {tcp_dstport}, IP Protocol: {ip_proto}, Frame Length: {frame_len}, TCP Flags (SYN): {tcp_syn}, TCP Flags (RST): {tcp_reset}, TCP Flags (PUSH): {tcp_push}, TCP Flags (ACK): {tcp_ack}, TCP Sequence Number: {tcp_seq
